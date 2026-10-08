@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0F172A">
+    <meta name="description" content="Portal transparansi kas RT: ringkasan pemasukan, pengeluaran, saldo, dan transaksi yang telah disetujui.">
+    <title>Transparansi Kas RT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              civic: { 50: '#F8FAFC', 900: '#0F172A', 700: '#15803D', 800: '#B91C1C', 300: '#CBD5E1' }
+            }
+          }
+        }
+      };
+    </script>
+    <style>
+      :root { color-scheme: light; }
+      body { background: #F8FAFC; color: #0F172A; }
+      :focus-visible { outline: 3px solid #0F172A; outline-offset: 3px; }
+    </style>
+    <script src="/app.js" defer></script>
+  </head>
+  <body class="min-h-screen bg-slate-50 font-sans antialiased">
+    <header class="bg-slate-900 text-white">
+      <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Portal warga</p>
+          <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Transparansi Kas RT</h1>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Ringkasan dan catatan transaksi kas yang telah disetujui bendahara.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-3">
+          <label for="period" class="grid gap-1 text-sm font-medium text-slate-200">
+            Periode laporan
+            <input id="period" type="month" class="font-mono rounded-sm border border-slate-300 bg-white px-3 py-2 text-slate-900">
+          </label>
+          <button id="refresh" type="button" class="min-h-10 rounded-sm border border-slate-500 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Muat ulang</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div class="flex flex-col gap-4 border-b border-slate-300 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-bold">Ringkasan keuangan</h2>
+          <p id="period-label" class="mt-1 font-mono text-sm text-slate-600">Memuat periode…</p>
+        </div>
+        <p id="updated-at" class="font-mono text-sm text-slate-600" aria-live="polite">Belum ada pembaruan</p>
+      </div>
+
+      <div id="notice" class="mt-5 hidden border border-slate-300 bg-white px-4 py-3 text-sm leading-6" role="status" aria-live="polite"></div>
+
+      <section class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" aria-label="Ringkasan kas">
+        <article class="border border-slate-300 bg-white p-4 sm:p-5">
+          <h3 class="text-sm font-semibold text-slate-600">Saldo kas</h3>
+          <p id="balance" class="mt-3 break-words font-mono text-2xl font-bold tabular-nums">—</p>
+          <p id="balance-as-of" class="mt-2 font-mono text-xs leading-5 text-slate-500">Menunggu saldo awal</p>
+        </article>
+        <article class="border border-slate-300 bg-white p-4 sm:p-5">
+          <h3 class="text-sm font-semibold text-slate-600">Pemasukan periode</h3>
+          <p id="income" class="mt-3 break-words font-mono text-2xl font-bold tabular-nums text-emerald-700">—</p>
+          <p class="mt-2 text-xs leading-5 text-slate-500">Dari transaksi yang disetujui</p>
+        </article>
+        <article class="border border-slate-300 bg-white p-4 sm:p-5">
+          <h3 class="text-sm font-semibold text-slate-600">Pengeluaran periode</h3>
+          <p id="expense" class="mt-3 break-words font-mono text-2xl font-bold tabular-nums text-red-700">—</p>
+          <p class="mt-2 text-xs leading-5 text-slate-500">Dari transaksi yang disetujui</p>
+        </article>
+        <article class="border border-slate-300 bg-white p-4 sm:p-5">
+          <h3 class="text-sm font-semibold text-slate-600">Selisih periode</h3>
+          <p id="net" class="mt-3 break-words font-mono text-2xl font-bold tabular-nums">—</p>
+          <p id="transaction-count" class="mt-2 font-mono text-xs leading-5 text-slate-500">— transaksi</p>
+        </article>
+      </section>
+
+      <section class="mt-8" aria-labelledby="transactions-title">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="transactions-title" class="text-lg font-bold">Transaksi</h2>
+            <p class="mt-1 text-sm text-slate-600">Daftar transaksi kas yang sudah dipublikasikan.</p>
+          </div>
+          <p id="results-count" class="font-mono text-sm text-slate-600" aria-live="polite">—</p>
+        </div>
+
+        <div class="mt-4 overflow-x-auto border border-slate-300 bg-white">
+          <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead class="bg-slate-100 text-xs uppercase tracking-wide text-slate-700">
+              <tr>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3">ID transaksi</th>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3">Tanggal</th>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3">Tipe</th>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3">Kategori</th>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3">Keterangan</th>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3 text-right">Nominal</th>
+                <th scope="col" class="border-b border-slate-300 px-4 py-3">Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="transaction-rows"></tbody>
+          </table>
+        </div>
+
+        <div id="empty-state" class="hidden border-x border-b border-slate-300 bg-white px-4 py-10 text-center">
+          <p class="font-semibold">Belum ada transaksi pada periode ini.</p>
+          <p class="mt-1 text-sm text-slate-600">Transaksi akan terlihat setelah disetujui dan dipublikasikan.</p>
+        </div>
+        <div class="mt-4 flex justify-center">
+          <button id="load-more" type="button" class="hidden min-h-10 rounded-sm border border-slate-400 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-100">Muat transaksi berikutnya</button>
+        </div>
+      </section>
+
+      <footer class="mt-10 border-t border-slate-300 pt-4 text-xs leading-5 text-slate-600">
+        Laporan ini bersumber dari catatan transaksi kas RT. Saldo dihitung dari saldo awal yang dicatat bendahara dan transaksi yang telah disetujui.
+      </footer>
+    </main>
+  </body>
+</html>
