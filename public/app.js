@@ -1,6 +1,6 @@
 const API_PATH = '/api/finance';
 const PAGE_SIZE = 50;
-const state = { from: '', to: '', offset: 0, total: 0, transactions: [], busy: false };
+const state = { from: '', to: '', offset: 0, total: 0, transactions: [], busy: false, loaded: false };
 
 const byId = (id) => document.getElementById(id);
 
@@ -117,7 +117,7 @@ function renderRows() {
     tbody.append(row);
   }
 
-  byId('empty-state').classList.toggle('hidden', state.transactions.length > 0 || state.busy);
+  byId('empty-state').classList.toggle('hidden', state.transactions.length > 0 || state.busy || !state.loaded);
   byId('results-count').textContent = `${state.transactions.length} dari ${state.total} transaksi`;
   byId('load-more').classList.toggle('hidden', state.transactions.length >= state.total || state.total === 0);
 }
@@ -142,6 +142,7 @@ async function loadPage({ append = false } = {}) {
     state.offset = 0;
     state.transactions = [];
     state.total = 0;
+    state.loaded = false;
     resetSummary();
   }
   renderRows();
@@ -164,6 +165,7 @@ async function loadPage({ append = false } = {}) {
     state.transactions = append
       ? state.transactions.concat(data.transactions)
       : data.transactions;
+    state.loaded = true;
     byId('period-label').textContent = `Periode ${formatDate(data.period?.from || state.from)} – ${formatDate(data.period?.to || state.to)}`;
     if (data.openingBalance?.amount == null || data.openingBalance?.asOfDate == null) {
       byId('balance').textContent = 'Belum tersedia';
@@ -179,6 +181,7 @@ async function loadPage({ append = false } = {}) {
     }
     renderRows();
   } catch (error) {
+    if (!append) state.loaded = false;
     setNotice('Data belum dapat dimuat. Periksa konfigurasi API atau coba muat ulang.', 'error');
     byId('period-label').textContent = `Periode ${formatDate(state.from)} – ${formatDate(state.to)}`;
     if (!append) {
@@ -190,6 +193,7 @@ async function loadPage({ append = false } = {}) {
     state.busy = false;
     byId('refresh').disabled = false;
     byId('load-more').disabled = false;
+    renderRows();
   }
 }
 
